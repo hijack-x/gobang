@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Gobang</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+            }
+            body {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+                background-color: #f0f0f0;
+            }
+            .gameBoard {
+                border: 2px solid #333;
+                background-color: burlywood;
+                cursor: pointer;
+            }
+            .info {
+                text-align: center;
+            }
+            .btnList {
+                text-align: center;
+                margin-top: 10px;
+            }
+            .btnList button {
+                min-width: 200px;
+                line-height: 24px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="main">
+            <div><canvas class="gameBoard"></canvas></div>
+            <div class="info"><span class="currentPlayer"></span></div>
+            <div class="btnList"><button class="restartGame">Restart Game</button></div>
+        </div>
+        <script>
+            (function () {
+                var $ = function (selector) {
+                    return document.querySelector(selector);
+                };
+                var Game = function (boardSize, gridSize, canvasSelector, updateCallback) {
+                    this.boardSize = boardSize; // board size
+                    this.gridSize = gridSize; // grid size in pixel
+                    this.updateCallback = updateCallback || function () {};
+                    this.board = [];
+                    this.currentPlayer = 'black'; // current player(black or white)
+                    this.lastCol = -1;
+                    this.lastRow = -1;
+                    this.isGameOver = false;
+                    // canvas init
+                    var canvas = $(canvasSelector);
+                    canvas.width = gridSize * boardSize;
+                    canvas.height = gridSize * boardSize;
+                    var self = this;
+                    canvas.addEventListener('click', function (event) {
+                        self.handleClick(event);
+                    });
+                    this.ctx = canvas.getContext('2d');
+                    this.canvas = canvas;
+                };
+                Game.prototype.emptyBoard = function () {
+                    var size = this.boardSize;
+                    this.board = Array(size).fill(null).map(function () {
+                        return Array(size).fill(null);
+                    });
+                };
+                Game.prototype.drawBoard = function () {
+                    var boardSize = this.boardSize;
+                    var gridSize = this.gridSize;
+                    var ctx = this.ctx;
+                    var canvas = this.canvas;
+
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    // draw grid
+                    for (var i = 0; i <= boardSize; i++) {
+                        // vertical line
+                        ctx.beginPath();
+                        ctx.moveTo(i * gridSize, 0);
+                        ctx.lineTo(i * gridSize, canvas.height);
+                        ctx.strokeStyle = '#333';
+                        ctx.stroke();
+                        // horizontal line
+                        ctx.beginPath();
+                        ctx.moveTo(0, i * gridSize);
+                        ctx.lineTo(canvas.width, i * gridSize);
+                        ctx.strokeStyle = '#333';
+                        ctx.stroke();
+                    }
+
+                    // draw all chessman
+                    for (var i = 0; i < boardSize; i++) {
+                        for (var j = 0; j < boardSize; j++) {
+                            if (!this.board[i][j]) {
+                                continue;
+                            }
+                            ctx.beginPath();
+                            ctx.arc(j * gridSize + gridSize / 2, i * gridSize + gridSize / 2, gridSize / 2.5, 0, Math.PI * 2);
+                            ctx.fillStyle = this.board[i][j];
+                            ctx.fill();
+
+                            // add red dot for last chessman
+                            if (i == this.lastRow && j == this.lastCol) {
+                                ctx.beginPath();
+                                ctx.arc(j * gridSize + gridSize / 2, i * gridSize + gridSize / 2, 4, 0, Math.PI * 2);
+                                ctx.fillStyle = 'red';
+                                ctx.fill();
+                            }
+                        }
+                    }
+
+                    // update callback
+                    this.updateCallback(this);
+                };
+                Game.prototype.checkWin = function (row, col) {
+                    var boardSize = this.boardSize;
+                    var color = this.board[row][col];
+                    var directions = [
+                        {dx: 0, dy: 1},
+                        {dx: 1, dy: 0},
+                        {dx: 1, dy: 1},
+                        {dx: 1, dy: -1}
+                    ];
+
+                    for (var dir of directions) {
+                        var count = 1;
+                        var x = col;
+                        var y = row;
+
+                        for (var i = 1; i < 5; i++) {
+                            x += dir.dx;
+                            y += dir.dy;
+                            if (x >= 0 && x < boardSize && y >= 0 && y < boardSize && this.board[y][x] === color) {
+                                count++;
+                            } else {
+                                break;
+                            }
+                        }
+
+                        x = col;
+                        y = row;
+                        for (var i = 1; i < 5; i++) {
+                            x -= dir.dx;
+                            y -= dir.dy;
+                            if (x >= 0 && x < boardSize && y >= 0 && y < boardSize && this.board[y][x] === color) {
+                                count++;
+                            } else {
+                                break;
+                            }
+                        }
+
+                        if (count >= 5) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                };
+                Game.prototype.handleClick = function (event) {
+                    if (this.isGameOver) {
+                        return;
+                    }
+                    var rect = this.canvas.getBoundingClientRect();
+                    var x = event.clientX - rect.left;
+                    var y = event.clientY - rect.top;
+
+                    var col = Math.floor(x / this.gridSize);
+                    var row = Math.floor(y / this.gridSize);
+
+                    if (!this.board[row][col]) {
+                        this.lastCol = col;
+                        this.lastRow = row;
+                        this.board[row][col] = this.currentPlayer;
+                        this.currentPlayer = (this.currentPlayer === 'black') ? 'white' : 'black';
+                        this.drawBoard();
+
+                        // check win
+                        if (this.checkWin(row, col)) {
+                            this.isGameOver = true;
+                            setTimeout(function () {
+                                alert(`Game over, ${this.currentPlayer === 'white' ? 'black' : 'white'} wins!`);
+                            }, 100);
+                        }
+                    }
+                };
+                Game.prototype.restart = function () {
+                    this.currentPlayer = 'black';
+                    this.lastCol = -1;
+                    this.lastRow = -1;
+                    this.isGameOver = false;
+                    this.emptyBoard();
+                    this.drawBoard();
+                };
+
+                var updateCallback = function (game) {
+                    $('.currentPlayer').innerHTML = `Current Player: ${game.currentPlayer}`;
+                };
+                var game = new Game(19, 48, '.gameBoard', updateCallback);
+                game.restart();
+
+                $('.restartGame').addEventListener('click', function () {
+                    game.restart();
+                });
+            }());
+        </script>
+    </body>
+</html>
