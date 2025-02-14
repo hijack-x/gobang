@@ -12,7 +12,6 @@
                 justify-content: center;
                 align-items: center;
                 height: 100vh;
-                margin: 0;
                 background-color: #f0f0f0;
             }
             .gameBoard {
@@ -64,59 +63,76 @@
                     this.ctx = canvas.getContext('2d');
                     this.canvas = canvas;
                 };
+                Game.prototype.log = function (msg) {
+                    //console.log(msg);
+                };
                 Game.prototype.emptyBoard = function () {
                     var size = this.boardSize;
                     this.board = Array(size).fill(null).map(function () {
                         return Array(size).fill(null);
                     });
                 };
-                Game.prototype.drawBoard = function () {
+                Game.prototype.drawGrid = function () {
                     var boardSize = this.boardSize;
                     var gridSize = this.gridSize;
                     var ctx = this.ctx;
-                    var canvas = this.canvas;
+                    var canvasWidth = this.canvas.width;
+                    var canvasHeight = this.canvas.height;
 
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-                    // draw grid
                     for (var i = 0; i <= boardSize; i++) {
                         // vertical line
                         ctx.beginPath();
                         ctx.moveTo(i * gridSize, 0);
-                        ctx.lineTo(i * gridSize, canvas.height);
+                        ctx.lineTo(i * gridSize, canvasHeight);
                         ctx.strokeStyle = '#333';
                         ctx.stroke();
                         // horizontal line
                         ctx.beginPath();
                         ctx.moveTo(0, i * gridSize);
-                        ctx.lineTo(canvas.width, i * gridSize);
+                        ctx.lineTo(canvasWidth, i * gridSize);
                         ctx.strokeStyle = '#333';
                         ctx.stroke();
                     }
+                    // center point
+                    ctx.beginPath();
+                    ctx.arc(canvasWidth / 2, canvasHeight / 2, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = '#000';
+                    ctx.fill();
+                };
+                Game.prototype.drawBoard = function () {
+                    var boardSize = this.boardSize;
+                    var gridSize = this.gridSize;
 
                     // draw all chessman
-                    for (var i = 0; i < boardSize; i++) {
-                        for (var j = 0; j < boardSize; j++) {
-                            if (!this.board[i][j]) {
+                    for (var row = 0; row < boardSize; row++) {
+                        for (var col = 0; col < boardSize; col++) {
+                            if (!this.board[row][col]) {
                                 continue;
                             }
-                            ctx.beginPath();
-                            ctx.arc(j * gridSize + gridSize / 2, i * gridSize + gridSize / 2, gridSize / 2.5, 0, Math.PI * 2);
-                            ctx.fillStyle = this.board[i][j];
-                            ctx.fill();
+                            this.drawCircle(row, col, gridSize / 2.5, this.board[row][col]);
 
                             // add red dot for last chessman
-                            if (i == this.lastRow && j == this.lastCol) {
-                                ctx.beginPath();
-                                ctx.arc(j * gridSize + gridSize / 2, i * gridSize + gridSize / 2, 4, 0, Math.PI * 2);
-                                ctx.fillStyle = 'red';
-                                ctx.fill();
+                            if (row == this.lastRow && col == this.lastCol) {
+                                this.drawCircle(row, col, 4, 'red');
                             }
                         }
                     }
 
                     // update callback
                     this.updateCallback(this);
+                };
+                Game.prototype.drawCircle = function (row, col, radius, fillStyle) {
+                    var gridSize = this.gridSize;
+                    var ctx = this.ctx;
+
+                    var x = col * gridSize + gridSize / 2;
+                    var y = row * gridSize + gridSize / 2;
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius, 0, Math.PI * 2);
+                    ctx.fillStyle = fillStyle;
+                    ctx.fill();
                 };
                 Game.prototype.checkWin = function (row, col) {
                     var boardSize = this.boardSize;
@@ -138,6 +154,7 @@
                             y += dir.dy;
                             if (x >= 0 && x < boardSize && y >= 0 && y < boardSize && this.board[y][x] === color) {
                                 count++;
+                                //this.drawCircle(y, x, 4, 'blue');
                             } else {
                                 break;
                             }
@@ -150,6 +167,7 @@
                             y -= dir.dy;
                             if (x >= 0 && x < boardSize && y >= 0 && y < boardSize && this.board[y][x] === color) {
                                 count++;
+                                //this.drawCircle(y, x, 4, 'blue');
                             } else {
                                 break;
                             }
@@ -164,6 +182,7 @@
                 };
                 Game.prototype.handleClick = function (event) {
                     if (this.isGameOver) {
+                        alert('Game is over!');
                         return;
                     }
                     var rect = this.canvas.getBoundingClientRect();
@@ -172,22 +191,37 @@
 
                     var col = Math.floor(x / this.gridSize);
                     var row = Math.floor(y / this.gridSize);
+                    this.log(`click at col: ${col}, row: ${row}`);
 
                     if (!this.board[row][col]) {
                         this.lastCol = col;
                         this.lastRow = row;
                         this.board[row][col] = this.currentPlayer;
                         this.currentPlayer = (this.currentPlayer === 'black') ? 'white' : 'black';
-                        this.drawBoard();
 
                         // check win
                         if (this.checkWin(row, col)) {
                             this.isGameOver = true;
-                            setTimeout(function () {
-                                alert(`Game over, ${this.currentPlayer === 'white' ? 'black' : 'white'} wins!`);
-                            }, 100);
+                        }
+                        this.drawBoard();
+
+                        if (this.isGameOver) {
+                            this.handleGameOver();
                         }
                     }
+                };
+                Game.prototype.handleGameOver = function () {
+                    var ctx = this.ctx;
+                    var canvasWidth = this.canvas.width;
+                    var canvasHeight = this.canvas.height;
+
+                    ctx.fillStyle = 'red';
+                    ctx.font = 'bold 36px Arial';
+                    ctx.fillText('GAME OVER', canvasWidth / 2 - 108, canvasHeight / 2 - 11);
+
+                    setTimeout(function () {
+                        alert(`Game over, ${this.currentPlayer === 'white' ? 'black' : 'white'} wins!`);
+                    }, 100);
                 };
                 Game.prototype.restart = function () {
                     this.currentPlayer = 'black';
@@ -195,13 +229,14 @@
                     this.lastRow = -1;
                     this.isGameOver = false;
                     this.emptyBoard();
+                    this.drawGrid();
                     this.drawBoard();
                 };
 
                 var updateCallback = function (game) {
                     $('.currentPlayer').innerHTML = `Current Player: ${game.currentPlayer}`;
                 };
-                var game = new Game(19, 48, '.gameBoard', updateCallback);
+                var game = new Game(18, 48, '.gameBoard', updateCallback);
                 game.restart();
 
                 $('.restartGame').addEventListener('click', function () {
