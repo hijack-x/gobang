@@ -56,10 +56,7 @@
                     var canvas = $(canvasSelector);
                     canvas.width = gridSize * boardSize;
                     canvas.height = gridSize * boardSize;
-                    var self = this;
-                    canvas.addEventListener('click', function (event) {
-                        self.handleClick(event);
-                    });
+                    canvas.addEventListener('click', this.handleClick.bind(this));
                     this.ctx = canvas.getContext('2d');
                     this.canvas = canvas;
                 };
@@ -81,18 +78,17 @@
 
                     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
+                    ctx.strokeStyle = '#333';
                     for (var i = 0; i <= boardSize; i++) {
                         // vertical line
                         ctx.beginPath();
                         ctx.moveTo(i * gridSize, 0);
                         ctx.lineTo(i * gridSize, canvasHeight);
-                        ctx.strokeStyle = '#333';
                         ctx.stroke();
                         // horizontal line
                         ctx.beginPath();
                         ctx.moveTo(0, i * gridSize);
                         ctx.lineTo(canvasWidth, i * gridSize);
-                        ctx.strokeStyle = '#333';
                         ctx.stroke();
                     }
                     // center point
@@ -197,17 +193,15 @@
                         this.lastCol = col;
                         this.lastRow = row;
                         this.board[row][col] = this.currentPlayer;
-                        this.currentPlayer = (this.currentPlayer === 'black') ? 'white' : 'black';
+                        this.drawBoard();
 
                         // check win
                         if (this.checkWin(row, col)) {
                             this.isGameOver = true;
-                        }
-                        this.drawBoard();
-
-                        if (this.isGameOver) {
                             this.handleGameOver();
+                            return;
                         }
+                        this.currentPlayer = (this.currentPlayer === 'black') ? 'white' : 'black';
                     }
                 };
                 Game.prototype.handleGameOver = function () {
@@ -219,8 +213,9 @@
                     ctx.font = 'bold 36px Arial';
                     ctx.fillText('GAME OVER', canvasWidth / 2 - 108, canvasHeight / 2 - 11);
 
+                    var player = this.currentPlayer;
                     setTimeout(function () {
-                        alert(`Game over, ${this.currentPlayer === 'white' ? 'black' : 'white'} wins!`);
+                        alert(`Game over, ${player} wins!`);
                     }, 100);
                 };
                 Game.prototype.restart = function () {
